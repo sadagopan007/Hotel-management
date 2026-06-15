@@ -1,0 +1,792 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Hotel Booking Analytics</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap');
+
+  :root {
+    --bg:       #0d0f14;
+    --surface:  #151820;
+    --card:     #1c2030;
+    --border:   #2a3045;
+    --gold:     #e8b84b;
+    --gold-dim: #a07e2a;
+    --teal:     #3dd6c8;
+    --red:      #e8524b;
+    --text:     #e2e8f0;
+    --muted:    #7a8499;
+    --radius:   12px;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Space Grotesk', sans-serif;
+    min-height: 100vh;
+  }
+
+  /* ── SIDEBAR ── */
+  .layout { display: flex; min-height: 100vh; }
+
+  .sidebar {
+    width: 240px;
+    background: var(--surface);
+    border-right: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    padding: 24px 0;
+    position: sticky;
+    top: 0;
+    height: 100vh;
+    overflow-y: auto;
+  }
+
+  .brand {
+    padding: 0 20px 24px;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 16px;
+  }
+  .brand-icon { font-size: 28px; }
+  .brand-name { font-size: 14px; font-weight: 700; color: var(--gold); letter-spacing: .05em; text-transform: uppercase; margin-top: 6px; }
+  .brand-sub  { font-size: 11px; color: var(--muted); margin-top: 2px; }
+
+  .nav-section { padding: 0 12px; margin-bottom: 8px; }
+  .nav-label { font-size: 10px; text-transform: uppercase; letter-spacing: .1em; color: var(--muted); padding: 0 8px 8px; }
+
+  .nav-btn {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    padding: 9px 12px;
+    border: none;
+    background: transparent;
+    color: var(--muted);
+    font-family: inherit;
+    font-size: 13px;
+    font-weight: 500;
+    border-radius: 8px;
+    cursor: pointer;
+    text-align: left;
+    transition: all .15s;
+    margin-bottom: 2px;
+  }
+  .nav-btn:hover    { background: var(--card); color: var(--text); }
+  .nav-btn.active   { background: rgba(232,184,75,.12); color: var(--gold); }
+  .nav-btn .icon    { font-size: 16px; width: 20px; text-align: center; }
+
+  /* ── MAIN ── */
+  .main { flex: 1; overflow: hidden; }
+
+  .topbar {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 16px 28px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+  }
+  .page-title { font-size: 18px; font-weight: 700; }
+  .badge { background: rgba(61,214,200,.15); color: var(--teal); font-size: 11px; font-weight: 600; padding: 4px 10px; border-radius: 20px; border: 1px solid rgba(61,214,200,.3); }
+
+  .content { padding: 28px; }
+
+  /* ── SECTIONS ── */
+  .section { display: none; }
+  .section.active { display: block; }
+
+  /* ── STAT CARDS ── */
+  .stat-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 16px; margin-bottom: 28px; }
+
+  .stat-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 20px;
+    position: relative;
+    overflow: hidden;
+  }
+  .stat-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+  }
+  .stat-card.gold::before  { background: var(--gold); }
+  .stat-card.teal::before  { background: var(--teal); }
+  .stat-card.red::before   { background: var(--red); }
+  .stat-card.purple::before{ background: #9b59b6; }
+
+  .stat-label { font-size: 11px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); margin-bottom: 8px; }
+  .stat-value { font-size: 28px; font-weight: 700; font-family: 'JetBrains Mono', monospace; }
+  .stat-sub   { font-size: 12px; color: var(--muted); margin-top: 4px; }
+
+  /* ── CHART CARDS ── */
+  .chart-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(380px, 1fr)); gap: 20px; margin-bottom: 28px; }
+
+  .chart-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 20px;
+  }
+  .chart-title { font-size: 13px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; margin-bottom: 16px; }
+  .chart-wrap  { position: relative; height: 220px; }
+
+  /* ── TABLE ── */
+  .table-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+    margin-bottom: 28px;
+  }
+  .table-header { padding: 16px 20px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+  .table-header h3 { font-size: 14px; font-weight: 600; }
+
+  .search-row { display: flex; gap: 10px; flex-wrap: wrap; }
+  input[type="text"], input[type="number"], select {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    color: var(--text);
+    font-family: inherit;
+    font-size: 13px;
+    padding: 8px 12px;
+    border-radius: 8px;
+    outline: none;
+    transition: border-color .15s;
+  }
+  input:focus, select:focus { border-color: var(--gold); }
+
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 16px;
+    border: none;
+    border-radius: 8px;
+    font-family: inherit;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: opacity .15s;
+  }
+  .btn:hover { opacity: .85; }
+  .btn-gold   { background: var(--gold);  color: #1a1200; }
+  .btn-teal   { background: var(--teal);  color: #012020; }
+  .btn-ghost  { background: var(--border); color: var(--text); }
+  .btn-red    { background: var(--red);   color: #fff; }
+
+  .data-table { width: 100%; border-collapse: collapse; }
+  .data-table th {
+    background: var(--surface);
+    color: var(--muted);
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: .06em;
+    padding: 10px 16px;
+    text-align: left;
+    border-bottom: 1px solid var(--border);
+  }
+  .data-table td { padding: 11px 16px; font-size: 13px; border-bottom: 1px solid rgba(42,48,69,.5); }
+  .data-table tr:last-child td { border-bottom: none; }
+  .data-table tr:hover td { background: rgba(255,255,255,.02); }
+
+  .pill {
+    display: inline-block;
+    padding: 2px 10px;
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: 600;
+  }
+  .pill-suite    { background: rgba(232,184,75,.18); color: var(--gold); }
+  .pill-deluxe   { background: rgba(61,214,200,.18); color: var(--teal); }
+  .pill-standard { background: rgba(122,132,153,.18); color: var(--muted); }
+
+  /* ── ML PANEL ── */
+  .ml-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 28px; }
+  @media(max-width: 760px){ .ml-grid { grid-template-columns: 1fr; } }
+
+  .ml-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 24px;
+  }
+  .ml-card h3 { font-size: 14px; font-weight: 700; margin-bottom: 6px; }
+  .ml-card p  { font-size: 12px; color: var(--muted); margin-bottom: 20px; }
+
+  .form-row { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 16px; }
+  .form-group { display: flex; flex-direction: column; gap: 6px; flex: 1; min-width: 120px; }
+  .form-group label { font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
+
+  .result-box {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 16px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px;
+    min-height: 80px;
+    color: var(--teal);
+    white-space: pre-wrap;
+  }
+
+  /* ── REPORT ── */
+  .report-box {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 24px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px;
+    white-space: pre-wrap;
+    color: var(--text);
+    line-height: 1.7;
+    min-height: 200px;
+  }
+
+  /* ── LOADER ── */
+  .loader { display: none; text-align: center; padding: 40px; color: var(--muted); }
+  .loader.active { display: block; }
+  .spinner { width: 32px; height: 32px; border: 3px solid var(--border); border-top-color: var(--gold); border-radius: 50%; animation: spin .7s linear infinite; margin: 0 auto 12px; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .empty { text-align: center; padding: 40px; color: var(--muted); }
+
+  /* ── NUMPY GRID ── */
+  .numpy-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 14px; }
+  .numpy-item {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 16px;
+    text-align: center;
+  }
+  .numpy-item .n-label { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; margin-bottom: 8px; }
+  .numpy-item .n-val   { font-size: 24px; font-weight: 700; font-family: 'JetBrains Mono', monospace; color: var(--gold); }
+
+  .section-title { font-size: 22px; font-weight: 700; margin-bottom: 6px; }
+  .section-sub   { font-size: 13px; color: var(--muted); margin-bottom: 24px; }
+
+  @media(max-width: 640px){
+    .sidebar { display: none; }
+    .chart-grid { grid-template-columns: 1fr; }
+    .stat-grid  { grid-template-columns: 1fr 1fr; }
+  }
+</style>
+</head>
+<body>
+<div class="layout">
+
+<!-- ══════════════ SIDEBAR ══════════════ -->
+<nav class="sidebar">
+  <div class="brand">
+    <div class="brand-icon">🏨</div>
+    <div class="brand-name">HotelIQ</div>
+    <div class="brand-sub">Analytics Platform</div>
+  </div>
+
+  <div class="nav-section">
+    <div class="nav-label">Overview</div>
+    <button class="nav-btn active" onclick="showSection('dashboard')">
+      <span class="icon">📊</span> Dashboard
+    </button>
+    <button class="nav-btn" onclick="showSection('bookings')">
+      <span class="icon">📋</span> Bookings
+    </button>
+  </div>
+
+  <div class="nav-section">
+    <div class="nav-label">Analysis</div>
+    <button class="nav-btn" onclick="showSection('city')">
+      <span class="icon">🏙️</span> City Report
+    </button>
+    <button class="nav-btn" onclick="showSection('revenue')">
+      <span class="icon">💰</span> Revenue
+    </button>
+    <button class="nav-btn" onclick="showSection('numpy')">
+      <span class="icon">🔢</span> NumPy Stats
+    </button>
+  </div>
+
+  <div class="nav-section">
+    <div class="nav-label">Machine Learning</div>
+    <button class="nav-btn" onclick="showSection('ml')">
+      <span class="icon">🤖</span> ML Insights
+    </button>
+    <button class="nav-btn" onclick="showSection('clusters')">
+      <span class="icon">🎯</span> Guest Segments
+    </button>
+  </div>
+
+  <div class="nav-section">
+    <div class="nav-label">Tools</div>
+    <button class="nav-btn" onclick="showSection('filter')">
+      <span class="icon">🔍</span> Search & Filter
+    </button>
+    <button class="nav-btn" onclick="showSection('report')">
+      <span class="icon">📄</span> Reports
+    </button>
+  </div>
+</nav>
+
+<!-- ══════════════ MAIN ══════════════ -->
+<main class="main">
+  <div class="topbar">
+    <div class="page-title" id="page-title">Dashboard</div>
+    <span class="badge">🟢 Connected to Flask API</span>
+  </div>
+
+  <div class="content">
+
+    <!-- ── DASHBOARD ── -->
+    <div class="section active" id="sec-dashboard">
+      <p class="section-sub">Hotel Booking Analytics — real-time insights from your dataset</p>
+
+      <div class="stat-grid" id="stat-cards">
+        <div class="stat-card gold"><div class="stat-label">Loading…</div></div>
+      </div>
+
+      <div class="chart-grid">
+        <div class="chart-card">
+          <div class="chart-title">Revenue by City</div>
+          <div class="chart-wrap"><canvas id="cityChart"></canvas></div>
+        </div>
+        <div class="chart-card">
+          <div class="chart-title">Room Type Distribution</div>
+          <div class="chart-wrap"><canvas id="roomPieChart"></canvas></div>
+        </div>
+        <div class="chart-card">
+          <div class="chart-title">Ratings Distribution</div>
+          <div class="chart-wrap"><canvas id="ratingChart"></canvas></div>
+        </div>
+        <div class="chart-card">
+          <div class="chart-title">Revenue by Room Type</div>
+          <div class="chart-wrap"><canvas id="revRoomChart"></canvas></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── BOOKINGS ── -->
+    <div class="section" id="sec-bookings">
+      <p class="section-title">All Bookings</p>
+      <p class="section-sub">Full dataset — 60 hotel booking records</p>
+      <div class="table-card">
+        <div class="table-header">
+          <h3>Booking Records</h3>
+          <button class="btn btn-gold" onclick="loadBookings()">↻ Refresh</button>
+        </div>
+        <div id="bookings-loader" class="loader active"><div class="spinner"></div>Loading bookings…</div>
+        <div style="overflow-x:auto"><table class="data-table" id="bookings-table"></table></div>
+      </div>
+    </div>
+
+    <!-- ── CITY REPORT ── -->
+    <div class="section" id="sec-city">
+      <p class="section-title">City Report</p>
+      <p class="section-sub">Bookings, revenue, and ratings grouped by city</p>
+      <div id="city-stat-grid" class="stat-grid" style="margin-bottom:28px;"></div>
+      <div class="table-card">
+        <div class="table-header"><h3>City-wise Analytics</h3><button class="btn btn-teal" onclick="loadCityReport()">↻ Refresh</button></div>
+        <div id="city-loader" class="loader active"><div class="spinner"></div>Loading…</div>
+        <div style="overflow-x:auto"><table class="data-table" id="city-table"></table></div>
+      </div>
+    </div>
+
+    <!-- ── REVENUE ── -->
+    <div class="section" id="sec-revenue">
+      <p class="section-title">Revenue Report</p>
+      <p class="section-sub">Revenue breakdown, top guests, occupancy</p>
+      <div id="rev-stat-grid" class="stat-grid" style="margin-bottom:28px;"></div>
+      <div class="chart-grid" style="margin-bottom:28px;">
+        <div class="chart-card">
+          <div class="chart-title">Top 5 Guests by Spend</div>
+          <div class="chart-wrap"><canvas id="topGuestChart"></canvas></div>
+        </div>
+        <div class="chart-card">
+          <div class="chart-title">Occupancy by Room Type</div>
+          <div class="chart-wrap"><canvas id="occupancyChart"></canvas></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── NUMPY ── -->
+    <div class="section" id="sec-numpy">
+      <p class="section-title">NumPy Statistics</p>
+      <p class="section-sub">Array operations — aggregation, vectorization, broadcasting</p>
+      <div class="numpy-grid" id="numpy-grid"></div>
+    </div>
+
+    <!-- ── ML ── -->
+    <div class="section" id="sec-ml">
+      <p class="section-title">ML — Revenue Predictor</p>
+      <p class="section-sub">Linear Regression trained on nights × price_per_night → revenue</p>
+      <div class="ml-grid">
+        <div class="ml-card">
+          <h3>🔮 Predict Revenue</h3>
+          <p>Enter stay details to get a predicted revenue value from the trained model.</p>
+          <div class="form-row">
+            <div class="form-group">
+              <label>Nights</label>
+              <input type="number" id="ml-nights" value="3" min="1" max="30" />
+            </div>
+            <div class="form-group">
+              <label>Price / Night (₹)</label>
+              <input type="number" id="ml-price" value="3000" min="500" max="10000" />
+            </div>
+          </div>
+          <button class="btn btn-gold" onclick="runPrediction()" style="width:100%;justify-content:center;margin-bottom:16px;">Run Prediction</button>
+          <div class="result-box" id="ml-result">Result will appear here…</div>
+        </div>
+        <div class="ml-card">
+          <h3>📈 Model Info</h3>
+          <p>Linear Regression uses the entire dataset to build the model. Higher R² = better fit.</p>
+          <div class="result-box" id="ml-model-info">Run a prediction to see model details.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── CLUSTERS ── -->
+    <div class="section" id="sec-clusters">
+      <p class="section-title">Guest Segments (KMeans)</p>
+      <p class="section-sub">Guests clustered into 3 segments based on spend, rating, and nights</p>
+      <div id="cluster-stat-grid" class="stat-grid" style="margin-bottom:28px;"></div>
+      <div class="table-card">
+        <div class="table-header"><h3>Guest Profiles</h3><button class="btn btn-teal" onclick="loadClusters()">↻ Refresh</button></div>
+        <div id="cluster-loader" class="loader active"><div class="spinner"></div>Running KMeans…</div>
+        <div style="overflow-x:auto"><table class="data-table" id="cluster-table"></table></div>
+      </div>
+    </div>
+
+    <!-- ── FILTER ── -->
+    <div class="section" id="sec-filter">
+      <p class="section-title">Search & Filter</p>
+      <p class="section-sub">Search by guest name or apply predefined filters</p>
+
+      <div class="table-card" style="margin-bottom:20px;">
+        <div class="table-header">
+          <h3>Search by Guest Name</h3>
+          <div class="search-row">
+            <input type="text" id="search-input" placeholder="e.g. john" onkeydown="if(event.key==='Enter')doSearch()" />
+            <button class="btn btn-gold" onclick="doSearch()">🔍 Search</button>
+          </div>
+        </div>
+        <div id="search-loader" class="loader"><div class="spinner"></div>Searching…</div>
+        <div style="overflow-x:auto"><table class="data-table" id="search-table"></table></div>
+      </div>
+
+      <div class="table-card">
+        <div class="table-header">
+          <h3>Quick Filters</h3>
+          <div class="search-row">
+            <button class="btn btn-ghost" onclick="doFilter('suites')">🛏 Suites</button>
+            <button class="btn btn-ghost" onclick="doFilter('chennai')">🏙 Chennai</button>
+            <button class="btn btn-ghost" onclick="doFilter('high_rating')">⭐ Rating > 4.5</button>
+            <button class="btn btn-ghost" onclick="doFilter('price_asc')">↑ Price Asc</button>
+            <button class="btn btn-ghost" onclick="doFilter('price_desc')">↓ Price Desc</button>
+            <button class="btn btn-ghost" onclick="doFilter('rating_desc')">↓ Rating Desc</button>
+          </div>
+        </div>
+        <div id="filter-loader" class="loader"><div class="spinner"></div>Filtering…</div>
+        <div style="overflow-x:auto"><table class="data-table" id="filter-table"></table></div>
+      </div>
+    </div>
+
+    <!-- ── REPORT ── -->
+    <div class="section" id="sec-report">
+      <p class="section-title">Report Generator</p>
+      <p class="section-sub">Generates hotel_report.txt on the server — mirrors Part 8 of the project spec</p>
+      <div style="margin-bottom:16px; display:flex; gap:12px; flex-wrap:wrap;">
+        <button class="btn btn-gold" onclick="generateReport()">⚡ Generate Report</button>
+        <a id="export-btn" class="btn btn-teal" href="http://localhost:5000/api/export" target="_blank">⬇ Export CSV</a>
+      </div>
+      <div class="report-box" id="report-box">Click "Generate Report" to produce the analytics report…</div>
+    </div>
+
+  </div><!-- /content -->
+</main>
+</div><!-- /layout -->
+
+<script>
+const API = 'http://localhost:5000/api';
+
+// ── Chart defaults ──────────────────────────────
+Chart.defaults.color = '#7a8499';
+Chart.defaults.borderColor = '#2a3045';
+const PALETTE = ['#e8b84b','#3dd6c8','#e8524b','#9b59b6','#27ae60','#2980b9'];
+
+let charts = {};
+
+function mkChart(id, cfg){
+  if(charts[id]) charts[id].destroy();
+  charts[id] = new Chart(document.getElementById(id).getContext('2d'), cfg);
+}
+
+// ── Navigation ──────────────────────────────────
+const pageNames = {
+  dashboard:'Dashboard', bookings:'All Bookings',
+  city:'City Report', revenue:'Revenue Report',
+  numpy:'NumPy Stats', ml:'ML Predictor',
+  clusters:'Guest Segments', filter:'Search & Filter', report:'Reports'
+};
+
+function showSection(id){
+  document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('sec-'+id).classList.add('active');
+  event.currentTarget.classList.add('active');
+  document.getElementById('page-title').textContent = pageNames[id];
+
+  // Lazy load
+  const loaders = {
+    bookings: loadBookings,
+    city: loadCityReport,
+    revenue: loadRevenue,
+    numpy: loadNumpy,
+    clusters: loadClusters
+  };
+  if(loaders[id]) loaders[id]();
+}
+
+// ── Utility ─────────────────────────────────────
+function pill(type){
+  const cls = type === 'Suite' ? 'pill-suite' : type === 'Deluxe' ? 'pill-deluxe' : 'pill-standard';
+  return `<span class="pill ${cls}">${type}</span>`;
+}
+
+function bookingRow(b){
+  return `<tr>
+    <td><code style="color:var(--muted)">#${b.booking_id}</code></td>
+    <td><b>${b.guest_name}</b></td>
+    <td>${b.city}</td>
+    <td>${pill(b.room_type)}</td>
+    <td>${b.nights}n</td>
+    <td>₹${b.price_per_night.toLocaleString()}</td>
+    <td>₹${b.revenue ? b.revenue.toLocaleString() : (b.nights*b.price_per_night).toLocaleString()}</td>
+    <td><span style="color:${b.rating>=4.5?'var(--gold)':'var(--text)'}">★ ${parseFloat(b.rating).toFixed(1)}</span></td>
+  </tr>`;
+}
+
+function setTable(tableId, headers, rows){
+  const t = document.getElementById(tableId);
+  t.innerHTML = `<thead><tr>${headers.map(h=>`<th>${h}</th>`).join('')}</tr></thead>
+                 <tbody>${rows.join('')}</tbody>`;
+}
+
+// ── DASHBOARD ──────────────────────────────────
+async function loadDashboard(){
+  const [dash, rev] = await Promise.all([
+    fetch(`${API}/dashboard`).then(r=>r.json()),
+    fetch(`${API}/revenue-report`).then(r=>r.json())
+  ]);
+
+  document.getElementById('stat-cards').innerHTML = `
+    <div class="stat-card gold"><div class="stat-label">Total Bookings</div><div class="stat-value">${dash.total_bookings}</div><div class="stat-sub">Across all cities</div></div>
+    <div class="stat-card teal"><div class="stat-label">Total Revenue</div><div class="stat-value">₹${(dash.total_revenue/1000).toFixed(0)}K</div><div class="stat-sub">₹${dash.total_revenue.toLocaleString()}</div></div>
+    <div class="stat-card red"><div class="stat-label">Avg Rating</div><div class="stat-value">${dash.avg_rating}</div><div class="stat-sub">★ out of 5</div></div>
+    <div class="stat-card purple"><div class="stat-label">Avg Nights</div><div class="stat-value">${dash.avg_nights}</div><div class="stat-sub">Per booking</div></div>
+  `;
+
+  // Revenue by city bar chart
+  const cityLabels = Object.keys(rev.revenue_by_city);
+  const cityVals   = Object.values(rev.revenue_by_city);
+  mkChart('cityChart',{
+    type:'bar',
+    data:{ labels:cityLabels, datasets:[{ label:'Revenue (₹)', data:cityVals, backgroundColor:PALETTE, borderRadius:6 }] },
+    options:{ responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}}, scales:{ y:{ticks:{callback:v=>'₹'+v.toLocaleString()}} } }
+  });
+
+  // Room type pie
+  const occLabels = rev.occupancy.map(o=>o.room_type);
+  const occVals   = rev.occupancy.map(o=>o.bookings);
+  mkChart('roomPieChart',{
+    type:'doughnut',
+    data:{ labels:occLabels, datasets:[{ data:occVals, backgroundColor:PALETTE, borderWidth:0 }] },
+    options:{ responsive:true, maintainAspectRatio:false, plugins:{legend:{position:'bottom'}} }
+  });
+
+  // Ratings histogram — bucket into 3.5-3.9, 4.0-4.4, 4.5-4.9
+  const bks = await fetch(`${API}/bookings`).then(r=>r.json());
+  const buckets = {'3.5–3.9':0,'4.0–4.4':0,'4.5–4.9':0};
+  bks.forEach(b=>{ const r=parseFloat(b.rating); if(r<4) buckets['3.5–3.9']++; else if(r<4.5) buckets['4.0–4.4']++; else buckets['4.5–4.9']++; });
+  mkChart('ratingChart',{
+    type:'bar',
+    data:{ labels:Object.keys(buckets), datasets:[{ label:'Bookings', data:Object.values(buckets), backgroundColor:['#e8524b','#e8b84b','#3dd6c8'], borderRadius:6 }] },
+    options:{ responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}} }
+  });
+
+  // Revenue by room type
+  const rrLabels = Object.keys(rev.revenue_by_room_type);
+  const rrVals   = Object.values(rev.revenue_by_room_type);
+  mkChart('revRoomChart',{
+    type:'bar',
+    data:{ labels:rrLabels, datasets:[{ label:'Revenue (₹)', data:rrVals, backgroundColor:PALETTE, borderRadius:6 }] },
+    options:{ responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}}, scales:{ y:{ticks:{callback:v=>'₹'+v.toLocaleString()}} } }
+  });
+}
+
+// ── BOOKINGS ────────────────────────────────────
+async function loadBookings(){
+  document.getElementById('bookings-loader').classList.add('active');
+  const data = await fetch(`${API}/bookings`).then(r=>r.json());
+  document.getElementById('bookings-loader').classList.remove('active');
+  const hdrs = ['#','Guest','City','Room','Nights','Price/Night','Revenue','Rating'];
+  setTable('bookings-table', hdrs, data.map(bookingRow));
+}
+
+// ── CITY REPORT ─────────────────────────────────
+async function loadCityReport(){
+  document.getElementById('city-loader').classList.add('active');
+  const data = await fetch(`${API}/city-report`).then(r=>r.json());
+  document.getElementById('city-loader').classList.remove('active');
+
+  document.getElementById('city-stat-grid').innerHTML = `
+    <div class="stat-card gold"><div class="stat-label">Most Profitable City</div><div class="stat-value" style="font-size:20px">${data.most_profitable_city}</div></div>
+    <div class="stat-card teal"><div class="stat-label">Cities Covered</div><div class="stat-value">${data.city_stats.length}</div></div>
+  `;
+
+  const hdrs = ['City','Bookings','Total Revenue','Avg Rating','Avg Nights'];
+  setTable('city-table', hdrs, data.city_stats.map(c=>`<tr>
+    <td><b>${c.city}</b></td>
+    <td>${c.total_bookings}</td>
+    <td>₹${parseInt(c.total_revenue).toLocaleString()}</td>
+    <td>★ ${c.avg_rating}</td>
+    <td>${c.avg_nights}n</td>
+  </tr>`));
+}
+
+// ── REVENUE ─────────────────────────────────────
+async function loadRevenue(){
+  const data = await fetch(`${API}/revenue-report`).then(r=>r.json());
+
+  document.getElementById('rev-stat-grid').innerHTML = `
+    <div class="stat-card gold"><div class="stat-label">Total Revenue</div><div class="stat-value">₹${data.total_revenue.toLocaleString()}</div></div>
+    <div class="stat-card teal"><div class="stat-label">Total Bookings</div><div class="stat-value">${data.total_bookings}</div></div>
+    <div class="stat-card red"><div class="stat-label">Most Popular Room</div><div class="stat-value" style="font-size:20px">${data.most_popular_room_type}</div></div>
+  `;
+
+  // Top guest chart
+  const tg = data.top_guests;
+  mkChart('topGuestChart',{
+    type:'bar',
+    data:{ labels:tg.map(g=>g.guest_name), datasets:[{ label:'Total Spend (₹)', data:tg.map(g=>g.total_spend), backgroundColor:PALETTE, borderRadius:6 }] },
+    options:{ responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}}, indexAxis:'y', scales:{ x:{ticks:{callback:v=>'₹'+v.toLocaleString()}} } }
+  });
+
+  // Occupancy
+  mkChart('occupancyChart',{
+    type:'doughnut',
+    data:{ labels:data.occupancy.map(o=>o.room_type), datasets:[{ data:data.occupancy.map(o=>o.bookings), backgroundColor:PALETTE, borderWidth:0 }] },
+    options:{ responsive:true, maintainAspectRatio:false, plugins:{legend:{position:'bottom'}} }
+  });
+}
+
+// ── NUMPY ────────────────────────────────────────
+async function loadNumpy(){
+  const d = await fetch(`${API}/numpy-stats`).then(r=>r.json());
+  document.getElementById('numpy-grid').innerHTML = `
+    <div class="numpy-item"><div class="n-label">Avg Nights</div><div class="n-val">${d.avg_nights}</div></div>
+    <div class="numpy-item"><div class="n-label">Highest Price</div><div class="n-val">₹${d.highest_price.toLocaleString()}</div></div>
+    <div class="numpy-item"><div class="n-label">Lowest Price</div><div class="n-val">₹${d.lowest_price.toLocaleString()}</div></div>
+    <div class="numpy-item"><div class="n-label">Avg Rating</div><div class="n-val">${d.avg_rating}</div></div>
+    <div class="numpy-item"><div class="n-label">Std Dev (Rating)</div><div class="n-val">${d.std_rating}</div></div>
+    <div class="numpy-item"><div class="n-label">Above Avg Price</div><div class="n-val">${d.above_avg_price_count}</div></div>
+  `;
+}
+
+// ── ML PREDICT ──────────────────────────────────
+async function runPrediction(){
+  const nights = document.getElementById('ml-nights').value;
+  const price  = document.getElementById('ml-price').value;
+  document.getElementById('ml-result').textContent = 'Running model…';
+  const d = await fetch(`${API}/ml/predict`, {
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({ nights: parseFloat(nights), price_per_night: parseFloat(price) })
+  }).then(r=>r.json());
+
+  document.getElementById('ml-result').textContent =
+    `Predicted Revenue: ₹${d.predicted_revenue.toLocaleString()}\n\n` +
+    `Nights Input    : ${nights}\n` +
+    `Price/Night     : ₹${parseFloat(price).toLocaleString()}\n` +
+    `Expected (naive): ₹${(nights * price).toLocaleString()}`;
+
+  document.getElementById('ml-model-info').textContent =
+    `Algorithm : Linear Regression\n` +
+    `R² Score  : ${d.r2_score} (${(d.r2_score*100).toFixed(1)}% variance explained)\n` +
+    `Intercept : ${d.intercept}\n\n` +
+    `Coefficients:\n` +
+    `  nights          → ${d.coefficients.nights}\n` +
+    `  price_per_night → ${d.coefficients.price_per_night}`;
+}
+
+// ── CLUSTERS ────────────────────────────────────
+async function loadClusters(){
+  document.getElementById('cluster-loader').classList.add('active');
+  const d = await fetch(`${API}/ml/clusters`).then(r=>r.json());
+  document.getElementById('cluster-loader').classList.remove('active');
+
+  document.getElementById('cluster-stat-grid').innerHTML = d.segment_summary.map(s=>`
+    <div class="stat-card gold">
+      <div class="stat-label">${s.segment_label}</div>
+      <div class="stat-value">${s.count}</div>
+      <div class="stat-sub">Avg Spend ₹${Math.round(s.avg_spend).toLocaleString()} · ★${parseFloat(s.avg_rating).toFixed(2)}</div>
+    </div>`).join('');
+
+  const labelColors = {'Premium Guest':'#e8b84b','Business Guest':'#3dd6c8','Budget Traveller':'#7a8499'};
+  setTable('cluster-table',
+    ['Guest','Total Spend','Avg Rating','Segment'],
+    d.guests.map(g=>`<tr>
+      <td><b>${g.guest_name}</b></td>
+      <td>₹${parseInt(g.total_spend).toLocaleString()}</td>
+      <td>★ ${parseFloat(g.avg_rating).toFixed(2)}</td>
+      <td><span style="color:${labelColors[g.segment_label]||'var(--text)'};font-weight:600">${g.segment_label}</span></td>
+    </tr>`)
+  );
+}
+
+// ── SEARCH ──────────────────────────────────────
+async function doSearch(){
+  const q = document.getElementById('search-input').value.trim();
+  if(!q) return;
+  document.getElementById('search-loader').classList.add('active');
+  const data = await fetch(`${API}/search?name=${encodeURIComponent(q)}`).then(r=>r.json());
+  document.getElementById('search-loader').classList.remove('active');
+  if(!data.length){
+    document.getElementById('search-table').innerHTML = '<tbody><tr><td colspan="8" class="empty">No results found for "'+q+'"</td></tr></tbody>';
+    return;
+  }
+  setTable('search-table', ['#','Guest','City','Room','Nights','Price/Night','Revenue','Rating'], data.map(bookingRow));
+}
+
+// ── FILTER ──────────────────────────────────────
+async function doFilter(mode){
+  document.getElementById('filter-loader').classList.add('active');
+  const data = await fetch(`${API}/filter?mode=${mode}`).then(r=>r.json());
+  document.getElementById('filter-loader').classList.remove('active');
+  setTable('filter-table', ['#','Guest','City','Room','Nights','Price/Night','Revenue','Rating'], data.map(bookingRow));
+}
+
+// ── REPORT ──────────────────────────────────────
+async function generateReport(){
+  document.getElementById('report-box').textContent = 'Generating report…';
+  const d = await fetch(`${API}/report/generate`).then(r=>r.json());
+  document.getElementById('report-box').textContent = d.report;
+}
+
+// ── INIT ─────────────────────────────────────────
+loadDashboard();
+loadRevenue();
+</script>
+</body>
+</html>
